@@ -1,0 +1,28 @@
+command:
+  - python3
+  - ${program}
+  - ${args}
+entity: alex-plus
+method: grid
+parameters:
+  seed:
+    values:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+  num_train_envs:
+    values:
+      - 512
+  num_updates:
+    values:
+      - 256
+  level_buffer_capacity:
+    values:
+      - 100
+
+
+program: examples/craftax/craftax_ncc.py
+project: NCC-CRAFTAX
+name: buffer_capacity_100

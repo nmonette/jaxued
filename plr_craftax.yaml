@@ -18,8 +18,8 @@ parameters:
       - 512
   num_updates:
     values:
-      - 256
+      - 500
 
 program: examples/craftax/craftax_plr.py
 project: NCC-CRAFTAX
-name: plr_5_seeds
+name: plr_5_seeds_v2

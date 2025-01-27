@@ -17,7 +17,7 @@ parameters:
       - 512
   num_updates:
     values:
-      - 256
+      - 500
   level_buffer_capacity:
     values:
       - 100
@@ -25,4 +25,4 @@ parameters:
 
 program: examples/craftax/craftax_ncc.py
 project: NCC-CRAFTAX
-name: buffer_capacity_100
+name: buffer_capacity_100_v2

@@ -39,5 +39,6 @@ RUN python3.11 -m pip install tensorrt
 ARG REQS
 RUN python3.11 -m pip install $REQS -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 RUN python3.11 -m pip install git+https://github.com/MichaelTMatthews/Craftax.git@main
+RUN python3.11 -m pip install git+https://github.com/DramaCow/jaxued.git@main
 
 WORKDIR /home/duser/uedfomo

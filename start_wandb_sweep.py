@@ -8,6 +8,7 @@ Arguments:
     --sweep   (str)  Path to sweep config file or existing entity/project/sweep_id (Required)
     --gpus    (str)  GPUs to use: "all", "0:4", or "0,1,2,3" (Default: all)
     --agents  (int)  Number of agents per GPU (Default: 2)
+    --entity  (str)  Wandb enety to use, defaults to login entity
 """
 
 import argparse
@@ -29,6 +30,7 @@ parser = argparse.ArgumentParser(description="Launch WandB sweep agents using Do
 parser.add_argument("--sweep", type=str, required=True, help="Path to sweep config file or entity/project/sweep_id")
 parser.add_argument("--gpus", type=str, default="all", help="GPUs to use: 'all', '0:4', or '0,1,2,3' (default: all)")
 parser.add_argument("--agents", type=int, default=2, help="Number of agents per GPU (default: 2)")
+parser.add_argument("--entity", type=str, default=None, help="Wandb enety to use, defaults to login entity")
 args = parser.parse_args()
 
 # Function to get available GPUs using `nvidia-smi`
@@ -48,7 +50,12 @@ if args.sweep.endswith(".yaml") and "/" not in args.sweep:
     assert os.path.exists(config_file), "Config file does not exist"
     sweep_config = yaml.load(open(config_file, "r"), Loader=yaml.FullLoader)
     project = sweep_config["project"]
-    entity = os.environ.get("WANDB_ENTITY")
+    if args.entity is None:
+        # get entity
+        api = wandb.Api()
+        entity = api.default_entity
+    else:
+        entity = args.entity
     sweep_id = wandb.sweep(sweep_config, project=project)
     logging.info(f"Created new sweep: {sweep_id}")
 elif len(args.sweep.split("/")) == 3:

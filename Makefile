@@ -10,7 +10,7 @@ GPUS=all
 # Set flag for docker run command
 MYUSER=arutherford
 WANDB_API_KEY=$(shell cat ./wandb_key)
-BASE_FLAGS=--rm -v ${PWD}:/home/$(MYUSER)/code --shm-size 20G
+BASE_FLAGS=--rm -v ${PWD}:/home/duser/code --shm-size 20G
 RUN_FLAGS=--gpus $(GPUS) $(BASE_FLAGS) -e WANDB_API_KEY=$(WANDB_API_KEY)
 
 DOCKER_IMAGE_NAME = $(MYUSER)-ncc-craftax

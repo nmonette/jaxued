@@ -512,7 +512,7 @@ def main(config=None, project="JAXUED_TEST"):
         tags.append("ACCEL")
     else:
         tags.append("PLR")
-    run = wandb.init(config=config, project=project, group=config["run_name"], tags=tags, mode="disabled")
+    run = wandb.init(config=config, project=project, group=config["run_name"], tags=tags, mode=config["wandb_mode"])
     config = wandb.config
 
     wandb.define_metric("num_updates")
@@ -529,10 +529,12 @@ def main(config=None, project="JAXUED_TEST"):
         # generic stats
         env_steps = stats["update_count"] * config["num_train_envs"] * config["num_steps"] * config["outer_rollout_steps"]
         env_steps_delta = config["eval_freq"] * config["num_train_envs"] * config["num_steps"] * config["outer_rollout_steps"]
+        
         log_dict = {
             "num_updates": stats["update_count"],
             "num_env_steps": env_steps,
             "sps": env_steps_delta / stats['time_delta'],
+            **stats["score_info"]
         }
         
         # evaluation performance
@@ -666,7 +668,14 @@ def main(config=None, project="JAXUED_TEST"):
         
         scores = jnp.sqrt(returns.var(axis=0)) / jnp.sqrt(num_samples) * pdf_values
         
-        return scores, returns.max(axis=0)
+        # log scores
+        info = {
+            "scores/mean_returns": mean_returns,
+            "scores/var_returns": returns.var(axis=0),
+            "scores/scores": scores,
+        }
+        
+        return scores, returns.max(axis=0), info
 
     def replace_fn(rng, train_state, old_level_scores):
         # NOTE: scores here are the actual UED scores, NOT the probabilities induced by the projection
@@ -676,7 +685,7 @@ def main(config=None, project="JAXUED_TEST"):
         new_levels = jax.vmap(sample_random_level)(jax.random.split(_rng, config["num_train_envs"]))
 
         rng, _rng = jax.random.split(rng)
-        new_level_scores, max_returns = learnability_fn(_rng, new_levels, config["num_train_envs"], train_state)
+        new_level_scores, max_returns, _ = learnability_fn(_rng, new_levels, config["num_train_envs"], train_state)
 
         idxs = jnp.flipud(jnp.argsort(new_level_scores))
 
@@ -752,7 +761,7 @@ def main(config=None, project="JAXUED_TEST"):
         # Update the level sampler
         levels = sampler["levels"]
         rng, _rng = jax.random.split(rng)
-        scores, _ = learnability_fn(_rng, levels, config['level_buffer_capacity'], train_state)
+        scores, _, learnability_info = learnability_fn(_rng, levels, config['level_buffer_capacity'], train_state)
 
         jax.debug.print("top 10 scores: {}", jax.lax.top_k(scores, 10))
 
@@ -772,6 +781,7 @@ def main(config=None, project="JAXUED_TEST"):
             "levels_played": init_env_state.env_state,
             "mean_returns": (info["returned_episode_returns"] * dones).sum() / dones.sum(),
             "grad_norms": grads.mean(),
+            "score_info": learnability_info,
         }
 
         train_state = train_state.replace(
@@ -937,7 +947,7 @@ if __name__=="__main__":
     mut_group.add_argument("--num_env_steps", type=int, default=None)
     parser.add_argument("--num_steps", type=int, default=64)
     parser.add_argument("--outer_rollout_steps", type=int, default=64)
-    group.add_argument("--num_train_envs", type=int, default=1024)
+    group.add_argument("--num_train_envs", type=int, default=128)
     group.add_argument("--num_minibatches", type=int, default=8)
     group.add_argument("--gamma", type=float, default=0.99)
     group.add_argument("--epoch_ppo", type=int, default=4)
@@ -950,7 +960,7 @@ if __name__=="__main__":
     # === PLR ===
     group.add_argument("--score_function", type=str, default="MaxMC", choices=["MaxMC", "pvl"])
     group.add_argument("--exploratory_grad_updates", action=argparse.BooleanOptionalAction, default=True)
-    group.add_argument("--level_buffer_capacity", type=int, default=4000)
+    group.add_argument("--level_buffer_capacity", type=int, default=500)
     group.add_argument("--replay_prob", type=float, default=0.5)
     group.add_argument("--staleness_coeff", type=float, default=0.3)
     group.add_argument("--temperature", type=float, default=1.0)
@@ -967,6 +977,7 @@ if __name__=="__main__":
     parser.add_argument("--n_eval_levels", type=int, default=5)
     parser.add_argument("--num_eval_steps", type=int, default=2048)
     # === DR CONFIG ===
+    parser.add_argument("--wandb_mode", type=str, default="online", choices=["online", "disabled"])
     
     config = vars(parser.parse_args())
     if config["num_env_steps"] is not None:

@@ -12,17 +12,14 @@ parameters:
       - 2
       - 3
       - 4
-  num_train_envs:
-    values:
-      - 512
-  num_updates:
-    values:
-      - 500
   level_buffer_capacity:
     values:
       - 100
+  wandb_mode:
+    values:
+      - "online"
 
 
 program: examples/craftax/craftax_ncc.py
 project: NCC-CRAFTAX
-name: buffer_capacity_100_v2
+name: buffer_capacity_100

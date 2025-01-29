@@ -1,6 +1,8 @@
 """
 Start a new WandB sweep or launch agents for an existing sweep using Makefile-managed Docker containers.
 
+Before usage, ensure wandb and jax are installed (can easily be done with conda)
+
 Usage:
     python run_sweep.py --sweep <config.yaml | entity/project/sweep_id> [--gpus all | 0:4 | 0,1,2,3] [--agents 2]
 

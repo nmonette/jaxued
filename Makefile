@@ -21,7 +21,7 @@ ID = $(shell id -u)
 
 # make file commands
 build:
-	DOCKER_BUILDKIT=1 docker build --build-arg USE_CUDA=$(USE_CUDA) --build-arg MYUSER=$(MYUSER) --build-arg UID=$(ID) --tag $(IMAGE) --progress=plain ${PWD}/.
+	DOCKER_BUILDKIT=1 docker build --build-arg USE_CUDA=$(USE_CUDA) --build-arg UID=$(ID) --build-arg GID=1234 --build-arg REQS="$(shell cat ./requirements.txt | tr '\n' ' ')" --tag $(IMAGE) --progress=plain ${PWD}/.
 
 run:
 	docker run -it $(RUN_FLAGS) $(IMAGE) /bin/bash

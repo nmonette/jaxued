@@ -1,47 +1,43 @@
-FROM nvcr.io/nvidia/jax:24.10-py3
+FROM nvidia/cuda:12.5.0-devel-ubuntu22.04
 
-# Create user
+ENV CUDA_PATH /usr/local/cuda
+ENV CUDA_INCLUDE_PATH /usr/local/cuda/include
+ENV CUDA_LIBRARY_PATH /usr/local/cuda/lib64
+
+# Set timezone
+ENV TZ=Europe/London DEBIAN_FRONTEND=noninteractive
+
+# Add old libraries (Python 3.11) to Ubuntu 22.04
+RUN apt update
+RUN apt install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
+RUN apt install -y \
+    git \
+    python3.11 \
+    python3-pip \
+    python3.11-venv \
+    python3-setuptools \
+    python3-wheel
+
+# Create local user
+# https://jtreminio.com/blog/running-docker-containers-as-current-host-user/
 ARG UID
-ARG MYUSER
-RUN useradd -u $UID --create-home ${MYUSER}
-USER ${MYUSER}
+ARG GID
+RUN if [ ${UID:-0} -ne 0 ] && [ ${GID:-0} -ne 0 ]; then \
+    groupadd -g ${GID} duser &&\
+    useradd -l -u ${UID} -g duser duser &&\
+    install -d -m 0755 -o duser -g duser /home/duser &&\
+    chown --changes --silent --no-dereference --recursive ${UID}:${GID} /home/duser \
+    ;fi
 
-# default workdir
-WORKDIR /home/${MYUSER}/code
-# RUN chown -R ${MYUSER} /home/${MYUSER}
-COPY --chown=${MYUSER} --chmod=765 . .
+USER duser
+WORKDIR /home/duser
 
-# install from source if needed + all the requirements
-USER root
+# Install Python packages
+ENV PATH="/home/duser/.local/bin:$PATH"
+RUN python3.11 -m pip install --upgrade pip
+RUN python3.11 -m pip install tensorrt
+ARG REQS
+RUN python3.11 -m pip install $REQS -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+RUN python3.11 -m pip install git+https://github.com/MichaelTMatthews/Craftax.git@main
 
-# install tmux
-RUN apt-get update && apt-get install -y tmux
-
-USER ${MYUSER}
-
-WORKDIR /home/${MYUSER}
-
-# RUN mkdir -p /home/${MYUSER}/.local/bin /home/${MYUSER}/.local/lib/python3.10/site-packages
-
-# Set up environment variables for local installations
-ENV PATH="/home/${MYUSER}/.local/bin:$PATH"
-ENV PYTHONPATH="/home/${MYUSER}/.local/lib/python3.10/site-packages:$PYTHONPATH"
-
-
-RUN python3 -m pip install --user --upgrade pip
-RUN python3 -m pip install --user git+https://github.com/MichaelTMatthews/Craftax.git@main
-WORKDIR /home/${MYUSER}/code
-RUN python3 -m pip install --user -e .
-
-#disabling preallocation
-ENV XLA_PYTHON_CLIENT_PREALLOCATE=false
-#safety measures
-ENV XLA_PYTHON_CLIENT_MEM_FRACTION=0.25 
-ENV TF_FORCE_GPU_ALLOW_GROWTH=true
-
-#for secrets and debug
-ENV WANDB_ENTITY="amacrutherford"
-
-# WORKDIR /home/${MYUSER}/code
-RUN git config --global --add safe.directory /home/${MYUSER}/code
-
+WORKDIR /home/duser/uedfomo

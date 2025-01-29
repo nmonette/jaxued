@@ -1,5 +1,5 @@
 command:
-  - python3
+  - python3.11
   - ${program}
   - --exploratory_grad_updates
   - ${args}

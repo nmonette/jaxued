@@ -947,7 +947,7 @@ if __name__=="__main__":
     mut_group.add_argument("--num_env_steps", type=int, default=None)
     parser.add_argument("--num_steps", type=int, default=64)
     parser.add_argument("--outer_rollout_steps", type=int, default=64)
-    group.add_argument("--num_train_envs", type=int, default=1024)
+    group.add_argument("--num_train_envs", type=int, default=128)
     group.add_argument("--num_minibatches", type=int, default=8)
     group.add_argument("--gamma", type=float, default=0.99)
     group.add_argument("--epoch_ppo", type=int, default=4)
@@ -960,7 +960,7 @@ if __name__=="__main__":
     # === PLR ===
     group.add_argument("--score_function", type=str, default="MaxMC", choices=["MaxMC", "pvl"])
     group.add_argument("--exploratory_grad_updates", action=argparse.BooleanOptionalAction, default=True)
-    group.add_argument("--level_buffer_capacity", type=int, default=4000)
+    group.add_argument("--level_buffer_capacity", type=int, default=500)
     group.add_argument("--replay_prob", type=float, default=0.5)
     group.add_argument("--staleness_coeff", type=float, default=0.3)
     group.add_argument("--temperature", type=float, default=1.0)

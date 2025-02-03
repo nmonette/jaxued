@@ -911,7 +911,7 @@ if __name__=="__main__":
     parser.add_argument("--max_number_of_checkpoints", type=int, default=60)
     # === EVAL ===
     parser.add_argument("--eval_freq", type=int, default=10)
-    parser.add_argument("--eval_num_attempts", type=int, default=1)
+    parser.add_argument("--eval_num_attempts", type=int, default=100)
     group = parser.add_argument_group('Training params')
     # === PPO === 
     group.add_argument("--lr", type=float, default=1e-4)

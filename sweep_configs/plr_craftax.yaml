@@ -21,8 +21,4 @@ parameters:
 
 program: examples/craftax/craftax_plr.py
 project: ncc-craftax
-<<<<<<< HEAD
 name: plr_10_seeds
-=======
-name: plr_5_seeds
->>>>>>> b955d23 (correct plr base config)

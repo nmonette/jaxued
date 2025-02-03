@@ -16,7 +16,8 @@ RUN apt install -y \
     python3-pip \
     python3.11-venv \
     python3-setuptools \
-    python3-wheel
+    python3-wheel \
+    tmux
 
 # Create local user
 # https://jtreminio.com/blog/running-docker-containers-as-current-host-user/

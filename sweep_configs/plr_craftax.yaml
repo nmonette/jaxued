@@ -15,5 +15,5 @@ parameters:
       - 4
 
 program: examples/craftax/craftax_plr.py
-project: NCC-CRAFTAX
-name: plr_5_seeds_v2
+project: ncc-craftax
+name: plr_5_seeds

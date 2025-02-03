@@ -298,7 +298,7 @@ def evaluate(
     init_obs: Observation,
     init_env_state: EnvState,
     max_episode_length: int,
-    keep_states=True
+    keep_states=False
 ) -> Tuple[chex.Array, chex.Array, chex.Array]:
     """This runs the model on the environment, given an initial state and observation, and returns (states, rewards, episode_lengths)
 
@@ -779,7 +779,7 @@ def main(config=None, project="JAXUED_TEST"):
             rng, train_state
         )
     
-    def eval(rng: chex.PRNGKey, train_state: TrainState, keep_states=True):
+    def eval(rng: chex.PRNGKey, train_state: TrainState, keep_states=False):
         """
         This evaluates the current policy on the set of evaluation levels specified by config["eval_levels"].
         It returns (states, cum_rewards, episode_lengths), with shapes (num_steps, num_eval_levels, ...), (num_eval_levels,), (num_eval_levels,)

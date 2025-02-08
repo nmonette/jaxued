@@ -4,16 +4,4 @@ tyro==0.8.10
 wandb==0.17.8
 jax[cuda12]==0.4.30
 torchvision
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 chex
-=======
-chex
->>>>>>> d9b6525 (chex req)
-=======
-chex
->>>>>>> 0ce09be32fdef25391e782548261e24ff5d2cb04
-=======
-chex
->>>>>>> main

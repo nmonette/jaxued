@@ -32,5 +32,5 @@ sweep:
 		echo "Error: SWEEP_ID is required. Usage: make sweep SWEEP_ID=<entity/project/sweep_id>"; \
 		exit 1; \
 	fi
-	@echo "Starting WandB sweep with ID: $(SWEEP_ID) with run flags:$(RUN_FLAGS)"
-	#docker run -t -d $(RUN_FLAGS) $(IMAGE) wandb agent $(SWEEP_ID)
+	@echo "Starting WandB sweep with ID: $(SWEEP_ID) with gpu:$(GPUS)"
+	docker run -t -d $(RUN_FLAGS) $(IMAGE) wandb agent $(SWEEP_ID)

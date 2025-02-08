@@ -1,6 +1,4 @@
 """
-<<<<<<< HEAD
-<<<<<<< HEAD
 Start a new WandB sweep or launch agents for an existing sweep using Makefile-managed Docker containers.
 
 Before usage, ensure wandb and jax are installed (can easily be done with conda)

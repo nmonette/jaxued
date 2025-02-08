@@ -897,7 +897,7 @@ if __name__=="__main__":
     import argparse
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", type=str, default="JAXUED_TEST")
+    parser.add_argument("--project", type=str, default="ncc-craftax")
     parser.add_argument("--run_name", type=str, default=None)
     parser.add_argument("--seed", type=int, default=0)
     
@@ -911,7 +911,7 @@ if __name__=="__main__":
     parser.add_argument("--max_number_of_checkpoints", type=int, default=60)
     # === EVAL ===
     parser.add_argument("--eval_freq", type=int, default=10)
-    parser.add_argument("--eval_num_attempts", type=int, default=1)
+    parser.add_argument("--eval_num_attempts", type=int, default=100)
     group = parser.add_argument_group('Training params')
     # === PPO === 
     group.add_argument("--lr", type=float, default=1e-4)
@@ -946,8 +946,8 @@ if __name__=="__main__":
     parser.add_argument("--accel_mutation",                     type=str, default="swap", choices=["swap", "swap_restricted", "noise"])
 
     # === Eval CONFIG ===
-    parser.add_argument("--n_eval_levels", type=int, default=5)
-    parser.add_argument("--num_eval_steps", type=int, default=2048)
+    parser.add_argument("--n_eval_levels", type=int, default=20)
+    parser.add_argument("--num_eval_steps", type=int, default=4096)
     # === DR CONFIG ===
     
     config = vars(parser.parse_args())

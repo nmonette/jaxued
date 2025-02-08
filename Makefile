@@ -24,7 +24,7 @@ build:
 	DOCKER_BUILDKIT=1 docker build --build-arg USE_CUDA=$(USE_CUDA) --build-arg UID=$(ID) --build-arg GID=1234 --build-arg REQS="$(shell cat ./requirements.txt | tr '\n' ' ')" --tag $(IMAGE) --progress=plain ${PWD}/.
 
 run:
-	docker run $(RUN_FLAGS) $(IMAGE) /bin/bash
+	docker run -it $(RUN_FLAGS) $(IMAGE) /bin/bash
 
 # Start WandB sweep agents
 sweep:
@@ -33,4 +33,4 @@ sweep:
 		exit 1; \
 	fi
 	@echo "Starting WandB sweep with ID: $(SWEEP_ID)"
-	docker run -d $(RUN_FLAGS) $(IMAGE) wandb agent $(SWEEP_ID)
+	docker run -t -d $(RUN_FLAGS) $(IMAGE) wandb agent $(SWEEP_ID)

@@ -6,6 +6,7 @@ jax[cuda12]==0.4.30
 torchvision
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 chex
 =======
 chex
@@ -13,3 +14,6 @@ chex
 =======
 chex
 >>>>>>> 0ce09be32fdef25391e782548261e24ff5d2cb04
+=======
+chex
+>>>>>>> main

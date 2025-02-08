@@ -486,7 +486,7 @@ def train_state_to_log_dict(train_state: TrainState, level_sampler: LevelSampler
             "level_sampler/max_score": sampler["scores"].max(),
             "level_sampler/weighted_score": (sampler["scores"] * level_sampler.level_weights(sampler)).sum(),
             "level_sampler/mean_score": (sampler["scores"] * idx).sum() / s,
-            "level_sampler/adv_entropy": -jnp.log(dist + 1e-6).T @ dist,
+            # "level_sampler/adv_entropy": -jnp.log(dist + 1e-6).T @ dist,
         },
         "info": {
             "num_dr_updates": train_state.num_dr_updates,
@@ -541,7 +541,17 @@ def main(config=None, project="JAXUED_TEST"):
         returns     = stats["eval_returns"]
         log_dict.update({"return/mean": returns.mean()})
         log_dict.update({"eval_ep_lengths/mean": stats['eval_ep_lengths'].mean()})
-        
+        losses = stats["losses"]
+
+        log_dict.update({
+            "total_loss": losses[0][-1],
+            "value_loss": losses[1][0][-1],
+            "policy_loss": losses[1][1][-1],
+            "entropy_loss": losses[1][2][-1],
+            "adv_loss": metrics["adv_loss"][-1],
+            "adv_entropy": metrics["adv_entropy"][-1]
+        })
+
         # level sampler
         log_dict.update(train_state_info["log"])
 
@@ -645,8 +655,8 @@ def main(config=None, project="JAXUED_TEST"):
                 init_obs,
                 init_env_state,
                 num_envs,
-                config["num_steps"] * config["outer_rollout_steps"],
-                1,  # don't discount
+                500,
+                1.0,
                 True
             )
             return disc_return
@@ -721,7 +731,7 @@ def main(config=None, project="JAXUED_TEST"):
         tx = optax.chain(
                 optax.clip_by_global_norm(config["max_grad_norm"]),
                 ti_ada(vy0 = jnp.zeros(config["level_buffer_capacity"]), eta=linear_schedule),
-                # optax.scale_by_learning_rate(1.0)
+                # optax.scale_by_optimistic_gradient()
             )
         rng, _rng = jax.random.split(rng)
         init_levels = jax.vmap(sample_random_level)(jax.random.split(_rng, config["level_buffer_capacity"]))
@@ -763,13 +773,15 @@ def main(config=None, project="JAXUED_TEST"):
         rng, _rng = jax.random.split(rng)
         scores, _, learnability_info = learnability_fn(_rng, levels, config['level_buffer_capacity'], train_state)
 
-        jax.debug.print("top 10 scores: {}", jax.lax.top_k(scores, 10))
+        # jax.debug.print("top 10 scores: {}", jax.lax.top_k(scores, 10))
 
         rng, _rng = jax.random.split(rng)
-        new_sampler = replace_fn(_rng, train_state, scores)
+        new_sampler = {**train_state.sampler, "scores": scores} if config["static_buffer"] else replace_fn(_rng, train_state, scores)
         sampler = {**new_sampler, "scores": new_score}
 
-        grad, y_opt_state = y_ti_ada.update(new_sampler["scores"], y_opt_state)
+        grad_fn = jax.grad(lambda y: y.T @ new_sampler["scores"] - config["meta_entr_coeff"] * jnp.log(y + 1e-6).T @ y)
+
+        grad, y_opt_state = y_ti_ada.update(grad_fn(new_score), y_opt_state)
         xhat = projection_simplex_truncated(xhat + grad, config["meta_trunc"])
 
         metrics = {
@@ -781,7 +793,8 @@ def main(config=None, project="JAXUED_TEST"):
             "levels_played": init_env_state.env_state,
             "mean_returns": (info["returned_episode_returns"] * dones).sum() / dones.sum(),
             "grad_norms": grads.mean(),
-            "score_info": learnability_info,
+            "adv_loss": (lambda y: y.T @ new_sampler["scores"] - config["meta_entr_coeff"] * jnp.log(y + 1e-6).T @ y)(new_score),
+            "adv_entropy": -jnp.log(new_score + 1e-6).T @ new_score
         }
 
         train_state = train_state.replace(
@@ -830,7 +843,7 @@ def main(config=None, project="JAXUED_TEST"):
 
         # Eval
         rng, rng_eval = jax.random.split(rng)
-        states, cum_rewards, episode_lengths = jax.vmap(eval, (0, None))(jax.random.split(rng_eval, config["eval_num_attempts"]), train_state)
+        states, cum_rewards, episode_lengths = jax.vmap(eval, (0, None, None))(jax.random.split(rng_eval, config["eval_num_attempts"]), train_state, False)
         
         # Collect Metrics
         eval_returns = cum_rewards.mean(axis=0) # (num_eval_levels,)
@@ -838,24 +851,24 @@ def main(config=None, project="JAXUED_TEST"):
         # just grab the first run
         states, episode_lengths = jax.tree_util.tree_map(lambda x: x[0], (states, episode_lengths)) # (num_steps, num_eval_levels, ...), (num_eval_levels,)
         # And one attempt
-        states = jax.tree_util.tree_map(lambda x: x[:, :1], states)
+        # states = jax.tree_util.tree_map(lambda x: x[:, :1], states)
         episode_lengths = episode_lengths[:1]
-        images = jax.vmap(jax.vmap(render_craftax_pixels, (0, None)), (0, None))(states.env_state.env_state, BLOCK_PIXEL_SIZE_IMG) # (num_steps, num_eval_levels, ...)
-        frames = images.transpose(0, 1, 4, 2, 3) # WandB expects color channel before image dimensions when dealing with animations for some reason
+        # images = jax.vmap(jax.vmap(render_craftax_pixels, (0, None)), (0, None))(states.env_state.env_state, BLOCK_PIXEL_SIZE_IMG) # (num_steps, num_eval_levels, ...)
+        # frames = images.transpose(0, 1, 4, 2, 3) # WandB expects color channel before image dimensions when dealing with animations for some reason
         
         metrics["update_count"] = train_state.num_dr_updates + train_state.num_replay_updates + train_state.num_mutation_updates
         metrics["eval_returns"] = eval_returns
         metrics["eval_ep_lengths"]  = episode_lengths
-        metrics["eval_animation"] = (frames, episode_lengths)
+        # metrics["eval_animation"] = (frames, episode_lengths)
         
         max_num_images = 32
 
-        metrics["dr_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_map(lambda x: x[:max_num_images], train_state.dr_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
-        metrics["replay_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_map(lambda x: x[:max_num_images], train_state.replay_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
-        metrics["mutation_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_map(lambda x: x[:max_num_images], train_state.mutation_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
+        metrics["dr_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_util.tree_map(lambda x: x[:max_num_images], train_state.dr_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
+        metrics["replay_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_util.tree_map(lambda x: x[:max_num_images], train_state.replay_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
+        metrics["mutation_levels"] = None # jax.vmap(render_craftax_pixels, (0, None))(jax.tree_util.tree_map(lambda x: x[:max_num_images], train_state.mutation_last_level_batch), BLOCK_PIXEL_SIZE_IMG)
         
-        highest_scoring_level = level_sampler.get_levels(train_state.sampler, train_state.sampler["scores"].argmax())
-        highest_weighted_level = level_sampler.get_levels(train_state.sampler, level_sampler.level_weights(train_state.sampler).argmax())
+        # highest_scoring_level = level_sampler.get_levels(train_state.sampler, train_state.sampler["scores"].argmax())
+        # highest_weighted_level = level_sampler.get_levels(train_state.sampler, level_sampler.level_weights(train_state.sampler).argmax())
         
         metrics["highest_scoring_level"] = None # render_craftax_pixels(highest_scoring_level, BLOCK_PIXEL_SIZE_IMG)
         metrics["highest_weighted_level"] = None # render_craftax_pixels(highest_weighted_level, BLOCK_PIXEL_SIZE_IMG)
@@ -933,7 +946,7 @@ if __name__=="__main__":
     parser.add_argument("--checkpoint_directory", type=str, default=None)
     parser.add_argument("--checkpoint_to_eval", type=int, default=-1)
     # === CHECKPOINTING ===
-    parser.add_argument("--checkpoint_save_interval", type=int, default=2)
+    parser.add_argument("--checkpoint_save_interval", type=int, default=0)
     parser.add_argument("--max_number_of_checkpoints", type=int, default=60)
     # === EVAL ===
     parser.add_argument("--eval_freq", type=int, default=10)
@@ -943,7 +956,7 @@ if __name__=="__main__":
     group.add_argument("--lr", type=float, default=2e-4)
     group.add_argument("--max_grad_norm", type=float, default=1.0)
     mut_group = group.add_mutually_exclusive_group()
-    mut_group.add_argument("--num_updates", type=int, default=500)
+    mut_group.add_argument("--num_updates", type=int, default=250)
     mut_group.add_argument("--num_env_steps", type=int, default=None)
     parser.add_argument("--num_steps", type=int, default=64)
     parser.add_argument("--outer_rollout_steps", type=int, default=64)
@@ -957,6 +970,7 @@ if __name__=="__main__":
     group.add_argument("--critic_coeff", type=float, default=0.5)
     group.add_argument("--meta_lr", type=float, default=1e-2)
     group.add_argument("--meta_trunc", type=float, default=1e-5)
+    group.add_argument("--meta_entr_coeff", type=float, default = 0.005)
     # === PLR ===
     group.add_argument("--score_function", type=str, default="MaxMC", choices=["MaxMC", "pvl"])
     group.add_argument("--exploratory_grad_updates", action=argparse.BooleanOptionalAction, default=True)
@@ -968,6 +982,7 @@ if __name__=="__main__":
     group.add_argument("--minimum_fill_ratio", type=float, default=0.5)
     group.add_argument("--prioritization", type=str, default="rank", choices=["rank", "topk"])
     group.add_argument("--buffer_duplicate_check", action=argparse.BooleanOptionalAction, default=True)
+    group.add_argument("--static_buffer", type=bool, default=False)
     # === ACCEL ===
     parser.add_argument("--use_accel",                          action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--num_edits",                          type=int, default=30)

@@ -9,6 +9,7 @@ ENV TZ=Europe/London DEBIAN_FRONTEND=noninteractive
 
 # Add old libraries (Python 3.11) to Ubuntu 22.04
 RUN apt update
+RUN apt-get update
 RUN apt install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa
 RUN apt install -y \
     git \

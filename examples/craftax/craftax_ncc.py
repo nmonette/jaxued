@@ -534,7 +534,7 @@ def main(config=None, project="JAXUED_TEST"):
             "num_updates": stats["update_count"],
             "num_env_steps": env_steps,
             "sps": env_steps_delta / stats['time_delta'],
-            **stats["score_info"]
+            # **stats["score_info"]
         }
         
         # evaluation performance
@@ -679,13 +679,13 @@ def main(config=None, project="JAXUED_TEST"):
         scores = jnp.sqrt(returns.var(axis=0)) / jnp.sqrt(num_samples) * pdf_values
         
         # log scores
-        info = {
-            "scores/mean_returns": mean_returns,
-            "scores/var_returns": returns.var(axis=0),
-            "scores/scores": scores,
-        }
+        # info = {
+        #     "scores/mean_returns": mean_returns,
+        #     "scores/var_returns": returns.var(axis=0),
+        #     "scores/scores": scores,
+        # }
         
-        return scores, returns.max(axis=0), info
+        return scores, returns.max(axis=0), None
 
     def replace_fn(rng, train_state, old_level_scores):
         # NOTE: scores here are the actual UED scores, NOT the probabilities induced by the projection
@@ -965,7 +965,7 @@ if __name__=="__main__":
     group.add_argument("--gamma", type=float, default=0.99)
     group.add_argument("--epoch_ppo", type=int, default=4)
     group.add_argument("--clip_eps", type=float, default=0.2)
-    group.add_argument("--gae_lambda", type=float, default=0.8)
+    group.add_argument("--gae_lambda", type=float, default=0.9)
     group.add_argument("--entropy_coeff", type=float, default=0.01)
     group.add_argument("--critic_coeff", type=float, default=0.5)
     group.add_argument("--meta_lr", type=float, default=1e-2)
